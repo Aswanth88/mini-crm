@@ -1,4 +1,4 @@
-// src/components/dashboard/AddLeadForm.tsx
+// src/components/AddLeadForm.tsx
 
 'use client';
 
@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
+import { ArrowRight, Plus } from 'lucide-react';
 
 export default function AddLeadForm() {
   const { leads, setLeads, updateAnalytics } = useCRMStore();
@@ -49,9 +51,14 @@ export default function AddLeadForm() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-blue-600 hover:bg-blue-700">
-          + Add Lead
-        </Button>
+            <motion.button
+              className="group flex items-center justify-center space-x-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 w-48 h-14" /* Adjusted size */
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Plus className="w-5 h-5" />
+              <span className="font-semibold">Add New Lead</span>
+            </motion.button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-md">
@@ -105,3 +112,4 @@ export default function AddLeadForm() {
     </Dialog>
   );
 }
+

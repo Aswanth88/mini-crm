@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { updateLeadStatus as supabaseUpdateLeadStatus, deleteLead as supabaseDeleteLead  } from '@/lib/api';
+import { updateLeadStatus as supabaseUpdateLeadStatus, deleteLead as supabaseDeleteLead, getLeads } from '@/lib/api';
 
 export interface Lead {
   id: string;
@@ -24,6 +24,7 @@ interface CRMState {
   };
   
   // Actions
+  fetchLeads: () => Promise<void>;
   setLeads: (leads: Lead[]) => void;
   addLead: (lead: Omit<Lead, 'id'>) => void;
   updateLead: (id: string, updates: Partial<Lead>) => void;
@@ -50,6 +51,15 @@ export const useCRMStore = create<CRMState>()(
 
       setLeads: (leads) => set(() => ({ leads })),
 
+      fetchLeads: async () => {
+        try {
+          const leads = await getLeads();
+          set({ leads });
+          get().updateAnalytics();
+        } catch (error) {
+          console.error('Failed to fetch leads from Supabase:', error);
+        }
+      },
 
       addLead: (lead) => {
         const newLead = {

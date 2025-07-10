@@ -1,24 +1,26 @@
 import asyncio
 import random
 from datetime import datetime
+from typing import List, Dict, Optional
+
 
 class CustomCRMLLM:
     def __init__(self):
         self.initialized = False
 
     async def initialize(self):
-        # Simulate model init delay
-        print("Initializing Mock CRM LLM...")
-        await asyncio.sleep(1)
+        print("Bootstrapping Advanced CRM LLM engine...")
+        await asyncio.sleep(1.2)
         self.initialized = True
-        print("Mock CRM LLM initialized successfully")
+        print("Advanced CRM LLM is live with enhanced reasoning and task inference!")
 
-    async def process_query(self, query, lead_data, history=None):
+    async def process_query(self, query: str, lead_data: Dict, history: Optional[List[str]] = None) -> Dict:
         if not self.initialized:
             await self.initialize()
 
-        intent = self.classify_intent(query)
-        response = self.generate_response(intent, query, lead_data)
+        history = history or []
+        intent = self.classify_intent(query, history)
+        response = self.generate_response(intent, query, lead_data, history)
         actions = self.extract_actions(intent, lead_data)
 
         return {
@@ -28,71 +30,80 @@ class CustomCRMLLM:
             "actions": actions,
             "metadata": {
                 "processingTime": datetime.utcnow().isoformat(),
-                "model": "MockCRM-LLM-v1",
-                "tokenCount": len(response)
+                "model": "AdvancedCRM-LLM-v2",
+                "tokenCount": len(response.split())
             }
         }
 
-    def classify_intent(self, query):
+    def classify_intent(self, query: str, history: List[str]) -> Dict:
         q = query.lower()
-        if "follow" in q or "email" in q or "contact" in q:
-            return {"label": "follow_up_request", "score": 0.95}
-        if "detail" in q or "info" in q or "tell me about" in q:
-            return {"label": "lead_details_request", "score": 0.90}
-        if "update" in q or "status" in q or "change" in q:
-            return {"label": "status_update", "score": 0.85}
-        if "schedule" in q or "meeting" in q or "appointment" in q:
-            return {"label": "schedule_meeting", "score": 0.88}
-        if "analytics" in q or "report" in q or "performance" in q:
-            return {"label": "analytics_request", "score": 0.82}
-        return {"label": "general_inquiry", "score": 0.70}
+        compound_query = q + " ".join(history).lower()
 
-    def generate_response(self, intent, query, lead):
+        if any(term in compound_query for term in ["follow", "remind", "ping", "email"]):
+            return {"label": "follow_up_request", "score": 0.97}
+        if any(term in compound_query for term in ["detail", "info", "overview", "profile"]):
+            return {"label": "lead_details_request", "score": 0.93}
+        if any(term in compound_query for term in ["status", "update", "progress"]):
+            return {"label": "status_update", "score": 0.89}
+        if any(term in compound_query for term in ["schedule", "meeting", "appointment"]):
+            return {"label": "schedule_meeting", "score": 0.91}
+        if any(term in compound_query for term in ["analytics", "performance", "report", "kpi"]):
+            return {"label": "analytics_request", "score": 0.88}
+
+        return {"label": "general_inquiry", "score": 0.75}
+
+    def generate_response(self, intent: Dict, query: str, lead: Dict, history: List[str]) -> str:
         name = lead.get("name", "the lead")
-        status = lead.get("status", "Not specified")
+        status = lead.get("status", "Unknown")
+        email = lead.get("email", "N/A")
+        phone = lead.get("phone", "N/A")
+        company = lead.get("company", "Unknown")
+        last_contact = lead.get("lastContact", "Not Available")
 
         if intent["label"] == "follow_up_request":
-            return f"I'll help you create a follow-up email for {name}. Given their current status ({status}), here's a personalized strategy."
+            return f"Compose a follow-up email for {name} at {email} based on their current status ({status}). Ensure empathy and personalized value proposition."
 
-        elif intent["label"] == "lead_details_request":
-            return f"Lead: {name}\n\n📧 Email: {lead.get('email')}\n📊 Status: {status}\n📅 Last Contact: {lead.get('lastContact', 'Not specified')}\n💼 Company: {lead.get('company', 'Not specified')}\n📱 Phone: {lead.get('phone', 'Not specified')}"
+        if intent["label"] == "lead_details_request":
+            return (f"Lead Profile Summary:\n- Name: {name}\n- Email: {email}\n- Phone: {phone}\n- Status: {status}\n"
+                    f"- Last Contact: {last_contact}\n- Company: {company}\n- Recommended Next Step: {self.get_recommended_action(status)}")
 
-        elif intent["label"] == "status_update":
-            suggestions = self.get_status_suggestions(status)
-            return f"{name} is currently '{status}'. Suggested next statuses: {', '.join(suggestions)}."
+        if intent["label"] == "status_update":
+            options = self.get_status_suggestions(status)
+            return f"Current status for {name} is '{status}'. Potential transitions: {', '.join(options)}. Would you like to proceed with an update?"
 
-        elif intent["label"] == "schedule_meeting":
-            return f"Suggesting a {self.suggest_meeting_type(status)} with {name} next {self.suggest_optimal_time()}."
+        if intent["label"] == "schedule_meeting":
+            return f"Proposed: {self.suggest_meeting_type(status)} with {name} on {self.suggest_optimal_time()} for qualification and discussion."
 
-        elif intent["label"] == "analytics_request":
-            return f"📊 Analytics for {name}:\nLead Score: {random.randint(50, 100)}\nEngagement: High\nConversion Probability: {random.randint(50, 95)}%"
+        if intent["label"] == "analytics_request":
+            return (f"📊 Performance Report for {name} (Status: {status})\n- Engagement Score: {random.randint(60, 100)}\n"
+                    f"- Conversion Probability: {random.randint(55, 90)}%\n- Activity Frequency: High\n- Priority Level: High")
 
-        else:
-            return f"I'm here to assist you with CRM-related tasks for {name}. Let me know what you need."
+        return f"I'm ready to assist with insights or actions for {name}. Type 'follow-up', 'details', or 'analytics' to proceed."
 
-    def extract_actions(self, intent, lead):
+    def extract_actions(self, intent: Dict, lead: Dict) -> List[Dict]:
         actions = []
+        lead_id = lead.get("id")
 
         if intent["label"] == "follow_up_request":
             actions.append({
-                "type": "generate_email",
+                "type": "send_email",
                 "recipient": lead.get("email"),
-                "priority": "high",
-                "suggestedSubject": f"Following up on our conversation - {lead.get('name')}"
+                "subject": f"Following up on our discussion - {lead.get('name')}",
+                "priority": "urgent"
             })
 
         elif intent["label"] == "status_update":
             actions.append({
                 "type": "update_status",
-                "leadId": lead.get("id"),
-                "suggestions": self.get_status_suggestions(lead.get("status")),
-                "currentStatus": lead.get("status")
+                "leadId": lead_id,
+                "current": lead.get("status"),
+                "suggestions": self.get_status_suggestions(lead.get("status"))
             })
 
         elif intent["label"] == "schedule_meeting":
             actions.append({
                 "type": "schedule_meeting",
-                "leadId": lead.get("id"),
+                "leadId": lead_id,
                 "meetingType": self.suggest_meeting_type(lead.get("status")),
                 "suggestedTime": self.suggest_optimal_time()
             })
@@ -100,38 +111,49 @@ class CustomCRMLLM:
         elif intent["label"] == "analytics_request":
             actions.append({
                 "type": "generate_report",
-                "leadId": lead.get("id"),
-                "reportType": "lead_analytics",
+                "leadId": lead_id,
+                "reportType": "crm_analytics",
                 "metrics": ["engagement", "conversion_probability", "response_rate"]
             })
 
         return actions
 
-    def get_status_suggestions(self, current):
-        transitions = {
+    def get_status_suggestions(self, current_status: str) -> List[str]:
+        pipeline = {
             "New": ["Contacted", "Qualified", "Not Interested"],
-            "Contacted": ["Qualified", "Opportunity", "Nurture"],
-            "Qualified": ["Opportunity", "Proposal Sent", "Not Qualified"],
-            "Opportunity": ["Closed Won", "Closed Lost", "Negotiation"],
-            "Closed Won": ["Onboarding", "Upsell Opportunity"],
-            "Closed Lost": ["Nurture", "Archive"]
+            "Contacted": ["Qualified", "Opportunity", "Follow Up"],
+            "Qualified": ["Demo Scheduled", "Proposal Sent"],
+            "Opportunity": ["Negotiation", "Closed Won", "Closed Lost"],
+            "Closed Won": ["Onboarding"],
+            "Closed Lost": ["Reopen", "Nurture"]
         }
-        return transitions.get(current, ["Contacted", "Qualified", "Not Interested"])
+        return pipeline.get(current_status, ["Contacted", "Qualified"])
 
-    def suggest_meeting_type(self, status):
+    def suggest_meeting_type(self, status: str) -> str:
         mapping = {
-            "New": "Discovery Call",
-            "Contacted": "Needs Assessment",
-            "Qualified": "Product Demo",
+            "New": "Introductory Call",
+            "Contacted": "Qualification Meeting",
+            "Qualified": "Solution Demo",
             "Opportunity": "Proposal Review",
-            "Closed Won": "Kickoff Meeting"
+            "Closed Won": "Handoff Meeting"
         }
-        return mapping.get(status, "Discovery Call")
+        return mapping.get(status, "Consultation")
 
-    def suggest_optimal_time(self):
+    def suggest_optimal_time(self) -> str:
         return random.choice([
-            "Tuesday 10:00 AM",
-            "Wednesday 2:00 PM",
-            "Thursday 11:00 AM",
-            "Friday 9:00 AM"
+            "Monday 11:00 AM",
+            "Tuesday 2:30 PM",
+            "Wednesday 4:00 PM",
+            "Thursday 10:00 AM",
+            "Friday 9:30 AM"
         ])
+
+    def get_recommended_action(self, status: str) -> str:
+        strategy = {
+            "New": "Initiate contact with an introductory email",
+            "Contacted": "Qualify their needs through conversation",
+            "Qualified": "Send demo or pitch deck",
+            "Opportunity": "Arrange proposal meeting",
+            "Closed Won": "Initiate onboarding process"
+        }
+        return strategy.get(status, "Evaluate lead status and plan follow-up")

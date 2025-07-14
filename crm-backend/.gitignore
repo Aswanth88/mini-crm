@@ -1,0 +1,22 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+env/
+*.egg-info/
+
+# Environment variables
+.env
+
+# VSCode settings (if applicable)
+.vscode/
+
+# Logs
+*.log
+
+# OS junk files
+.DS_Store
+Thumbs.db

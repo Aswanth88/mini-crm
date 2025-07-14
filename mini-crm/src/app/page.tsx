@@ -25,7 +25,8 @@ import {
   Activity,
   ArrowRight,
   Clock,
-  DollarSign
+  DollarSign,
+  AlertCircle
 } from 'lucide-react';
 import AdvancedDashboard from '@/components/AdvancedDashboard';
 import WorkflowBuilder from '@/components/WorkflowBuilder';
@@ -38,17 +39,54 @@ export default function Home() {
   const [showWorkflows, setShowWorkflows] = useState(false);
   const [showOCR, setShowOCR] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const {fetchLeads, leads, analytics } = useCRMStore();
-  //const [isLoading, setIsLoading] = useState(false);
+
   useEffect(() => {
-    fetchLeads();
-  }, []);
+    const loadData = async () => {
+      setIsLoading(true);
+      await fetchLeads();
+      setIsLoading(false);
+    };
+    loadData();
+  }, [fetchLeads]);
+
+  // Calculate real-time stats based on actual data
+  const getChangePercentage = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? '+100%' : '0%';
+    const change = ((current - previous) / previous) * 100;
+    return change > 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`;
+  };
 
   const quickStats = [
-    { label: 'Total Leads', value: analytics.totalLeads, change: '+2%', icon: Users, color: 'bg-blue-500' },
-    { label: 'Conversion Rate', value: analytics.conversionRate+"%", change: '+3%', icon: TrendingUp, color: 'bg-green-500' },
-    { label: 'Active Chats', value: analytics.activeChats, change: 'Real-time interactions', icon: MessageSquare, color: 'bg-purple-500' },
-    { label: 'AI Accuracy', value: analytics.aiAccuracy+"%", change: 'LLM performance', icon:BarChart , color: 'bg-orange-500' },
+    { 
+      label: 'Total Leads', 
+      value: analytics.totalLeads.toString(), 
+      change: isLoading ? '...' : analytics.totalLeads > 0 ? `${analytics.totalLeads} leads` : 'No leads yet', 
+      icon: Users, 
+      color: 'from-blue-500 to-blue-600' 
+    },
+    { 
+      label: 'Conversion Rate', 
+      value: `${analytics.conversionRate}%`, 
+      change: isLoading ? '...' : analytics.totalLeads > 0 ? 'Based on closed leads' : 'Add leads to track', 
+      icon: TrendingUp, 
+      color: 'from-green-500 to-green-600' 
+    },
+    { 
+      label: 'Active Chats', 
+      value: analytics.activeChats.toString(), 
+      change: isLoading ? '...' : analytics.activeChats > 0 ? 'Recent interactions' : 'No recent activity', 
+      icon: MessageSquare, 
+      color: 'from-purple-500 to-purple-600' 
+    },
+    { 
+      label: 'AI Accuracy', 
+      value: `${analytics.aiAccuracy}%`, 
+      change: isLoading ? '...' : analytics.totalLeads > 0 ? 'Lead qualification rate' : 'No data available', 
+      icon: BarChart, 
+      color: 'from-orange-500 to-orange-600' 
+    },
   ];
 
   return (
@@ -88,7 +126,6 @@ export default function Home() {
                 <p className="text-xs text-blue-200">AI-Powered</p>
               </div>
             </motion.div>
-
           </div>
         </nav>
 
@@ -120,30 +157,29 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
             >
-            {/* Action Buttons */}
-            <div className="flex flex-wrap justify-center gap-4 mb-8">
-                            {/* The AddLeadForm component now provides its own trigger button */}
+              {/* Action Buttons */}
+              <div className="flex flex-wrap justify-center gap-4 mb-8">
                 <AddLeadForm />
-              <motion.button
-                onClick={() => setShowOCR(true)}
-                className="group flex items-center space-x-3 bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Upload className="w-5 h-5" />
-                <span className="font-semibold">Document Upload</span>
-              </motion.button>
+                <motion.button
+                  onClick={() => setShowOCR(true)}
+                  className="group flex items-center space-x-3 bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Upload className="w-5 h-5" />
+                  <span className="font-semibold">Document Upload</span>
+                </motion.button>
 
-              <motion.button
-                onClick={() => setShowWorkflows(true)}
-                className="group flex items-center space-x-3 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Workflow className="w-5 h-5" />
-                <span className="font-semibold">Workflows</span>
-              </motion.button>
-            </div>
+                <motion.button
+                  onClick={() => setShowWorkflows(true)}
+                  className="group flex items-center space-x-3 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Workflow className="w-5 h-5" />
+                  <span className="font-semibold">Workflows</span>
+                </motion.button>
+              </div>
             </motion.div>
           </div>
         </div>
@@ -185,8 +221,14 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600 mb-1">{stat.label}</p>
-                    <p className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</p>
-                    <p className="text-xs text-emerald-600 font-medium">{stat.change}</p>
+                    <p className="text-2xl font-bold text-gray-900 mb-1">
+                      {isLoading ? (
+                        <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                      ) : (
+                        stat.value
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-500 font-medium">{stat.change}</p>
                   </div>
                   <div className={`bg-gradient-to-r ${stat.color} p-3 rounded-lg shadow-sm`}>
                     <stat.icon className="w-5 h-5 text-white" />
@@ -195,6 +237,37 @@ export default function Home() {
               </motion.div>
             ))}
           </motion.div>
+
+          {/* No Data State */}
+          {!isLoading && leads.length === 0 && (
+            <motion.div 
+              className="bg-white rounded-xl p-8 shadow-sm border border-gray-200 text-center mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.8 }}
+            >
+              <div className="max-w-md mx-auto">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users className="w-8 h-8 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Leads Yet</h3>
+                <p className="text-gray-600 mb-4">
+                  Start building your pipeline by adding your first lead or importing existing data.
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <AddLeadForm />
+                  <Button 
+                    onClick={() => setShowOCR(true)}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Import Data
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           {/* Dashboard Section */}
           <motion.div 
@@ -210,11 +283,15 @@ export default function Home() {
                     <BarChart className="w-5 h-5 text-blue-600" />
                     Dashboard Overview
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">Real-time insights and analytics</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {isLoading ? 'Loading data...' : `${analytics.totalLeads} leads in your pipeline`}
+                  </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm text-gray-600">Live Data</span>
+                  <div className={`w-2 h-2 rounded-full animate-pulse ${isLoading ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
+                  <span className="text-sm text-gray-600">
+                    {isLoading ? 'Loading...' : 'Live Data'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -293,7 +370,7 @@ export default function Home() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      <span className="text-sm text-gray-600">Meeting scheduling</span>
+                      <span className="text-sm text-gray-600">Performance tracking</span>
                     </div>
                   </div>
                 </div>

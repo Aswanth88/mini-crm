@@ -53,19 +53,52 @@ class CustomCRMLLM:
         return {"label": "general_inquiry", "score": 0.75}
 
     def generate_response(self, intent: Dict, query: str, lead: Dict, history: List[str]) -> str:
-        name = lead.get("name", "the lead")
-        status = lead.get("status", "Unknown")
-        email = lead.get("email", "N/A")
-        phone = lead.get("phone", "N/A")
-        company = lead.get("company", "Unknown")
-        last_contact = lead.get("lastContact", "Not Available")
+        # DEBUG: Print the lead data to see what's being received
+        print(f"DEBUG - Lead data received: {lead}")
+        print(f"DEBUG - Lead data keys: {list(lead.keys())}")
+        
+        # FIXED: Handle None/null values AND empty strings properly
+        def get_value_or_default(key: str, default: str = "N/A") -> str:
+            value = lead.get(key)
+            print(f"DEBUG - Key '{key}': value={repr(value)}, type={type(value)}")
+            # Check for None, empty string, or whitespace-only strings
+            if value is None or value == "" or (isinstance(value, str) and value.strip() == ""):
+                print(f"DEBUG - Using default for '{key}': {default}")
+                return default
+            result = str(value)
+            print(f"DEBUG - Using actual value for '{key}': {result}")
+            return result
+        
+        name = get_value_or_default("name", "the lead")
+        status = get_value_or_default("status", "Unknown")
+        email = get_value_or_default("email", "N/A")
+        phone = get_value_or_default("phone", "N/A")
+        company = get_value_or_default("company", "Unknown")
+        address = get_value_or_default("address", "Not Available")
+        source = get_value_or_default("source", "Not Available")
+        title = get_value_or_default("title", "Not Available")
+        industry = get_value_or_default("industry", "Not Available")
+        website = get_value_or_default("website", "Not Available")
+        
+        # DEBUG: Print the final processed values
+        print(f"DEBUG - Final values: name={name}, status={status}, email={email}, phone={phone}, company={company}, address={address}, source={source}, title={title}, industry={industry}, website={website}")
 
         if intent["label"] == "follow_up_request":
             return f"Compose a follow-up email for {name} at {email} based on their current status ({status}). Ensure empathy and personalized value proposition."
 
         if intent["label"] == "lead_details_request":
-            return (f"Lead Profile Summary:\n- Name: {name}\n- Email: {email}\n- Phone: {phone}\n- Status: {status}\n"
-                    f"- Last Contact: {last_contact}\n- Company: {company}\n- Recommended Next Step: {self.get_recommended_action(status)}")
+            return (f"Lead Profile Summary:\n"
+                    f"- Name: {name}\n"
+                    f"- Email: {email}\n"
+                    f"- Phone: {phone}\n"
+                    f"- Status: {status}\n"
+                    f"- Address: {address}\n"
+                    f"- Source: {source}\n"
+                    f"- Company: {company}\n"
+                    f"- Title: {title}\n"
+                    f"- Industry: {industry}\n"
+                    f"- Website: {website}\n"
+                    f"- Recommended Next Step: {self.get_recommended_action(status)}")
 
         if intent["label"] == "status_update":
             options = self.get_status_suggestions(status)
@@ -75,8 +108,11 @@ class CustomCRMLLM:
             return f"Proposed: {self.suggest_meeting_type(status)} with {name} on {self.suggest_optimal_time()} for qualification and discussion."
 
         if intent["label"] == "analytics_request":
-            return (f"📊 Performance Report for {name} (Status: {status})\n- Engagement Score: {random.randint(60, 100)}\n"
-                    f"- Conversion Probability: {random.randint(55, 90)}%\n- Activity Frequency: High\n- Priority Level: High")
+            return (f"📊 Performance Report for {name} (Status: {status})\n"
+                    f"- Engagement Score: {random.randint(60, 100)}\n"
+                    f"- Conversion Probability: {random.randint(55, 90)}%\n"
+                    f"- Activity Frequency: High\n"
+                    f"- Priority Level: High")
 
         return f"I'm ready to assist with insights or actions for {name}. Type 'follow-up', 'details', or 'analytics' to proceed."
 
@@ -120,22 +156,22 @@ class CustomCRMLLM:
 
     def get_status_suggestions(self, current_status: str) -> List[str]:
         pipeline = {
-            "New": ["Contacted", "Qualified", "Not Interested"],
-            "Contacted": ["Qualified", "Opportunity", "Follow Up"],
-            "Qualified": ["Demo Scheduled", "Proposal Sent"],
-            "Opportunity": ["Negotiation", "Closed Won", "Closed Lost"],
-            "Closed Won": ["Onboarding"],
-            "Closed Lost": ["Reopen", "Nurture"]
+            "new": ["contacted", "qualified", "not_interested"],
+            "contacted": ["qualified", "converted", "follow_up"],
+            "qualified": ["converted", "demo_scheduled", "proposal_sent"],
+            "converted": ["negotiation", "closed_won", "closed_lost"],
+            "closed_won": ["onboarding"],
+            "closed_lost": ["reopen", "nurture"]
         }
-        return pipeline.get(current_status, ["Contacted", "Qualified"])
+        return pipeline.get(current_status, ["contacted", "qualified"])
 
     def suggest_meeting_type(self, status: str) -> str:
         mapping = {
-            "New": "Introductory Call",
-            "Contacted": "Qualification Meeting",
-            "Qualified": "Solution Demo",
-            "Opportunity": "Proposal Review",
-            "Closed Won": "Handoff Meeting"
+            "new": "Introductory Call",
+            "contacted": "Qualification Meeting",
+            "qualified": "Solution Demo",
+            "converted": "Proposal Review",
+            "closed_won": "Handoff Meeting"
         }
         return mapping.get(status, "Consultation")
 
@@ -150,10 +186,10 @@ class CustomCRMLLM:
 
     def get_recommended_action(self, status: str) -> str:
         strategy = {
-            "New": "Initiate contact with an introductory email",
-            "Contacted": "Qualify their needs through conversation",
-            "Qualified": "Send demo or pitch deck",
-            "Opportunity": "Arrange proposal meeting",
-            "Closed Won": "Initiate onboarding process"
+            "new": "Initiate contact with an introductory email",
+            "contacted": "Qualify their needs through conversation",
+            "qualified": "Send demo or pitch deck",
+            "converted": "Arrange proposal meeting",
+            "closed_won": "Initiate onboarding process"
         }
         return strategy.get(status, "Evaluate lead status and plan follow-up")

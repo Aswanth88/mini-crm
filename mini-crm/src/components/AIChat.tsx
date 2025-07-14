@@ -129,10 +129,21 @@ export default function AIChat() {
             id: selectedLead.id,
             name: selectedLead.name,
             email: selectedLead.email,
-            phone: selectedLead.phone,
+            phone: selectedLead.phone || null,
             source: selectedLead.source,
+            status: selectedLead.status, 
+            company: selectedLead.company || null,
+            title: selectedLead.title || null,
+            address: selectedLead.address || null,
+            industry: selectedLead.industry || null,
+            website: selectedLead.website || null,
+
           }
         : null;
+
+
+        console.log('Lead data being sent to AI:', leadData);
+        console.log('Selected lead data:', selectedLead);
 
       const conversationHistory = messages.map(msg => ({
         role: msg.role,
@@ -195,8 +206,14 @@ export default function AIChat() {
             id: selectedLead.id,
             name: selectedLead.name,
             email: selectedLead.email,
-            phone: selectedLead.phone,
+            phone: selectedLead.phone|| null,
             source: selectedLead.source,
+            status: selectedLead.status||null, 
+            company: selectedLead.company || null,
+            title: selectedLead.title || null,
+            address: selectedLead.address || null,
+            industry: selectedLead.industry || null,
+            website: selectedLead.website || null,
           }
         : null;
 
@@ -251,7 +268,7 @@ export default function AIChat() {
   };
 
   return (
-    <div className="h-[700px] flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50/30 rounded-2xl shadow-2xl border border-slate-200/50 overflow-hidden">
+    <div className="flex flex-col bg-gradient-to-br from-slate-50 via-white to-blue-50/30 rounded-2xl shadow-2xl border border-slate-200/50 overflow-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-6 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20"></div>
@@ -302,7 +319,7 @@ export default function AIChat() {
       )}
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      <div className="flex-1 px-6 py-4 space-y-4 min-h-0">
         {messages.length === 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}

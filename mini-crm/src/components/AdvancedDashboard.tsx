@@ -27,7 +27,7 @@ export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => 
   } = useCRMStore();
 
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'name' | 'email' | 'status' | 'source'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'email' | 'company' | 'status' | 'source'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
@@ -37,13 +37,22 @@ export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => 
   const filteredLeads = leads.filter(lead => {
     const matchesFilter = filter === 'all' || lead.status === filter;
     const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.email.toLowerCase().includes(searchTerm.toLowerCase());
+      lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lead.company?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
     return matchesFilter && matchesSearch;
   });
 
   const sortedLeads = [...filteredLeads].sort((a, b) => {
-    const aValue = a[sortBy].toLowerCase();
-    const bValue = b[sortBy].toLowerCase();
+    let aValue: string;
+    let bValue: string;
+
+    if (sortBy === 'company') {
+      aValue = (a.company || '').toLowerCase();
+      bValue = (b.company || '').toLowerCase();
+    } else {
+      aValue = a[sortBy].toLowerCase();
+      bValue = b[sortBy].toLowerCase();
+    }
 
     if (sortOrder === 'asc') {
       return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
@@ -51,7 +60,6 @@ export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => 
       return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
     }
   });
-
   const handleLeadClick = (lead: Lead) => {
     setSelectedLead(lead);
     onLeadClick();
@@ -66,7 +74,7 @@ export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => 
     }
   };
 
-  const handleSort = (column: 'name' | 'email' | 'status' | 'source') => {
+  const handleSort = (column: 'name' | 'email' | 'company' | 'status' | 'source') => {
     if (sortBy === column) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -154,6 +162,16 @@ export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => 
                       <ArrowUpDown className="h-4 w-4" />
                     </button>
                   </th>
+
+                  <th className="text-left p-4 font-medium text-gray-900">
+                    <button
+                      onClick={() => handleSort('company')}
+                      className="flex items-center space-x-1 hover:text-blue-600 transition-colors"
+                    >
+                      <span>Company</span>
+                      <ArrowUpDown className="h-4 w-4" />
+                    </button>
+                  </th>
                   <th className="text-left p-4 font-medium text-gray-900">
                     <button
                       onClick={() => handleSort('source')}
@@ -198,6 +216,9 @@ export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => 
                     </td>
                     <td className="p-4">
                       <span className="text-gray-600">{lead.email}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-gray-600 font-medium">{lead.company || 'No Company'}</span>
                     </td>
                     <td className="p-4">
                       <Badge variant="outline" className="text-xs">

@@ -757,6 +757,7 @@ export default function Home() {
                 onClick={() => setShowWorkflows(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
+                ×
               </button>
             </div>
             <div className="p-6">

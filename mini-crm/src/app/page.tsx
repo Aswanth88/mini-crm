@@ -221,13 +221,13 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600 mb-1">{stat.label}</p>
-                    <p className="text-2xl font-bold text-gray-900 mb-1">
+                    <div className="text-2xl font-bold text-gray-900 mb-1">
                       {isLoading ? (
                         <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
                       ) : (
                         stat.value
                       )}
-                    </p>
+                    </div>
                     <p className="text-xs text-gray-500 font-medium">{stat.change}</p>
                   </div>
                   <div className={`bg-gradient-to-r ${stat.color} p-3 rounded-lg shadow-sm`}>

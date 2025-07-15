@@ -1,5 +1,5 @@
 // src/lib/automation.js
-import { updateLeadStatus, supabase } from './api';
+import { updateLeadStatus, supabase } from '../lib/api';
 import { sendEmailViaResend, EMAIL_TEMPLATES, isValidEmail } from './emailService';
 
 ////////////////////////

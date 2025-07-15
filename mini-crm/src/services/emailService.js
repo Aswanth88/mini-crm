@@ -1,5 +1,5 @@
 // src/lib/emailService.js
-import { logEmailAttempt } from './api';
+import { logEmailAttempt } from '../lib/api';
 
 ////////////////////////
 // 🔹 Email Templates
@@ -61,7 +61,7 @@ export async function sendEmailViaResend(to, subject, htmlContent, leadId, showT
 
     if (result.success) {
       await logEmailAttempt(leadId, to, subject, 'sent', null);
-      console.log('Email sent successfully via Resend API');
+      console.log('Email sent successfully via STMP');
       
       // Show success toast
       if (showToast) {

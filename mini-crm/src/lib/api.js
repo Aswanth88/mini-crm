@@ -1,5 +1,7 @@
 // src/lib/api.js
 import { createClient } from "@supabase/supabase-js";
+  // Import workflow trigger function
+import { triggerWorkflowForLead } from '../services/workflowExecutor';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -27,9 +29,7 @@ export async function createLead(lead) {
   
   if (error) throw error;
   
-  // Import workflow trigger function
-  const { triggerWorkflowForLead } = await import('./workflows');
-  await triggerWorkflowForLead(data, 'lead-created');
+     triggerWorkflowForLead(data, 'lead-created');
   
   return data;
 }

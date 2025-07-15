@@ -57,28 +57,16 @@ class CustomCRMLLM:
         print(f"DEBUG - Lead data received: {lead}")
         print(f"DEBUG - Lead data keys: {list(lead.keys())}")
         
-        # FIXED: Handle None/null values AND empty strings properly
-        def get_value_or_default(key: str, default: str = "N/A") -> str:
-            value = lead.get(key)
-            print(f"DEBUG - Key '{key}': value={repr(value)}, type={type(value)}")
-            # Check for None, empty string, or whitespace-only strings
-            if value is None or value == "" or (isinstance(value, str) and value.strip() == ""):
-                print(f"DEBUG - Using default for '{key}': {default}")
-                return default
-            result = str(value)
-            print(f"DEBUG - Using actual value for '{key}': {result}")
-            return result
-        
-        name = get_value_or_default("name", "the lead")
-        status = get_value_or_default("status", "Unknown")
-        email = get_value_or_default("email", "N/A")
-        phone = get_value_or_default("phone", "N/A")
-        company = get_value_or_default("company", "Unknown")
-        address = get_value_or_default("address", "Not Available")
-        source = get_value_or_default("source", "Not Available")
-        title = get_value_or_default("title", "Not Available")
-        industry = get_value_or_default("industry", "Not Available")
-        website = get_value_or_default("website", "Not Available")
+        name = lead.get("name", "the lead")
+        status = lead.get("status", "Unknown")
+        email = lead.get("email", "N/A")
+        phone = lead.get("phone", "N/A")
+        company = lead.get("company", "Unknown")
+        address = lead.get("address", "Not Available")
+        source = lead.get("source", "Not Available")
+        title = lead.get("title", "Not Available")
+        industry = lead.get("industry", "Not Available")
+        website = lead.get("website", "Not Available")
         
         # DEBUG: Print the final processed values
         print(f"DEBUG - Final values: name={name}, status={status}, email={email}, phone={phone}, company={company}, address={address}, source={source}, title={title}, industry={industry}, website={website}")

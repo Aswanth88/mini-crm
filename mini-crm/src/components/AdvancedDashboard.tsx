@@ -14,17 +14,17 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 
 export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => void }) {
   const {
-    fetchLeads, 
-    leads, 
-    analytics, 
-    filter, 
-    searchTerm, 
-    setFilter, 
-    setSearchTerm, 
+    fetchLeads,
+    leads,
+    analytics,
+    filter,
+    searchTerm,
+    setFilter,
+    setSearchTerm,
     setSelectedLead,
     updateLead
   } = useCRMStore();
-  
+
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'name' | 'email' | 'status' | 'source'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -36,14 +36,14 @@ export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => 
   const filteredLeads = leads.filter(lead => {
     const matchesFilter = filter === 'all' || lead.status === filter;
     const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lead.email.toLowerCase().includes(searchTerm.toLowerCase());
+      lead.email.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
   const sortedLeads = [...filteredLeads].sort((a, b) => {
     const aValue = a[sortBy].toLowerCase();
     const bValue = b[sortBy].toLowerCase();
-    
+
     if (sortOrder === 'asc') {
       return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
     } else {
@@ -53,7 +53,7 @@ export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => 
 
   const handleLeadClick = (lead: Lead) => {
     setSelectedLead(lead);
-    onLeadClick(); 
+    onLeadClick();
   };
 
   const handleStatusUpdate = async (leadId: string, newStatus: Lead["status"]) => {
@@ -106,7 +106,7 @@ export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => 
             className="pl-10"
           />
         </div>
-        
+
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-48">
             <SelectValue />
@@ -204,21 +204,63 @@ export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => 
                       </Badge>
                     </td>
                     <td className="p-4">
-                      <Select 
-                        value={lead.status} 
-                        onValueChange={(newStatus) => handleStatusUpdate(lead.id, newStatus as Lead["status"])}
-                      >
-                        <SelectTrigger className="w-36">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new">New</SelectItem>
-                          <SelectItem value="contacted">Contacted</SelectItem>
-                          <SelectItem value="qualified">Qualified</SelectItem>
-                          <SelectItem value="converted">Converted</SelectItem>
-                          <SelectItem value="closed">Closed</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="relative">
+                        <Select
+                          value={lead.status}
+                          onValueChange={(newStatus) => handleStatusUpdate(lead.id, newStatus as Lead["status"])}
+                        >
+                          <SelectTrigger className={`w-40 h-10 border-2 rounded-xl font-medium transition-all duration-300 hover:shadow-md ${getStatusColor(lead.status)} border-transparent`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="w-40 p-2 bg-white/95 backdrop-blur-sm border-0 shadow-2xl rounded-xl">
+                            <SelectItem
+                              value="new"
+                              className="rounded-lg mb-1 hover:bg-blue-50 focus:bg-blue-50 transition-colors duration-200"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-3 h-3 bg-blue-500 rounded-full" />
+                                <span className="font-medium">New</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem
+                              value="contacted"
+                              className="rounded-lg mb-1 hover:bg-yellow-50 focus:bg-yellow-50 transition-colors duration-200"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-3 h-3 bg-yellow-500 rounded-full" />
+                                <span className="font-medium">Contacted</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem
+                              value="qualified"
+                              className="rounded-lg mb-1 hover:bg-green-50 focus:bg-green-50 transition-colors duration-200"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-3 h-3 bg-green-500 rounded-full" />
+                                <span className="font-medium">Qualified</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem
+                              value="converted"
+                              className="rounded-lg mb-1 hover:bg-purple-50 focus:bg-purple-50 transition-colors duration-200"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-3 h-3 bg-purple-500 rounded-full" />
+                                <span className="font-medium">Converted</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem
+                              value="closed"
+                              className="rounded-lg hover:bg-gray-50 focus:bg-gray-50 transition-colors duration-200"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-3 h-3 bg-gray-500 rounded-full" />
+                                <span className="font-medium">Closed</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-center space-x-2">
@@ -231,7 +273,7 @@ export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => 
                           <Bot className="h-4 w-4" />
                           <span className="text-sm">Chat</span>
                         </motion.button>
-                        
+
                         <AlertDialog open={deleteLeadId === lead.id} onOpenChange={(open) => !open && setDeleteLeadId(null)}>
                           <AlertDialogTrigger asChild>
                             <button
@@ -270,7 +312,7 @@ export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => 
                 ))}
               </tbody>
             </table>
-            
+
             {sortedLeads.length === 0 && (
               <div className="text-center py-12">
                 <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />

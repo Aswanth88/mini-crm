@@ -142,8 +142,6 @@ export default function AIChat() {
         : null;
 
 
-        console.log('Lead data being sent to AI:', leadData);
-        console.log('Selected lead data:', selectedLead);
 
       const conversationHistory = messages.map(msg => ({
         role: msg.role,

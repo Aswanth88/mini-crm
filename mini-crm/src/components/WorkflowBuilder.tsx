@@ -52,8 +52,11 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 
 import { getLeads } from '@/lib/api';
-import{automationService} from '@/lib/automation';
 import { toast } from 'sonner';
+import { nodeTypes } from '../types/nodeTypes';
+import { executeWorkflow } from '../services/workflowExecutor';
+import { actionTypes, conditionTypes } from '../types/workflowTypes';
+
 // Workflow storage using React state
 interface StoredWorkflow {
   id: string;
@@ -66,316 +69,9 @@ interface StoredWorkflow {
   description?: string;
 }
 
-// Enhanced Custom Node Components
-const TriggerNode = ({ data, selected }: { data: any, selected: boolean }) => (
-  <div className={`relative px-6 py-4 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-white rounded-xl shadow-lg border-2 transition-all duration-300 ${
-    selected ? 'border-yellow-400 shadow-2xl scale-105' : 'border-blue-300 hover:shadow-xl'
-  }`}>
-    <div className="flex items-center gap-3">
-      <div className="p-2 bg-white/20 rounded-lg">
-        <Target className="h-5 w-5" />
-      </div>
-      <div>
-        <div className="font-bold text-sm uppercase tracking-wide">TRIGGER</div>
-        <div className="text-xs mt-1 opacity-90 font-medium">{data.label}</div>
-      </div>
-    </div>
-    <Handle
-      type="source"
-      position={Position.Right}
-      className="w-3 h-3 bg-white border-2 border-blue-500"
-    />
-  </div>
-);
 
-const ActionNode = ({ data, selected }: { data: any, selected: boolean }) => (
-  <div className={`relative px-6 py-4 bg-gradient-to-br from-green-500 via-green-600 to-green-700 text-white rounded-xl shadow-lg border-2 transition-all duration-300 ${
-    selected ? 'border-yellow-400 shadow-2xl scale-105' : 'border-green-300 hover:shadow-xl'
-  }`}>
-    <div className="flex items-center gap-3">
-      <div className="p-2 bg-white/20 rounded-lg">
-        <Zap className="h-5 w-5" />
-      </div>
-      <div>
-        <div className="font-bold text-sm uppercase tracking-wide">ACTION</div>
-        <div className="text-xs mt-1 opacity-90 font-medium">{data.label}</div>
-        <div className="text-xs mt-1 opacity-75">{data.description}</div>
-      </div>
-    </div>
-    <Handle
-      type="target"
-      position={Position.Left}
-      className="w-3 h-3 bg-white border-2 border-green-500"
-    />
-    <Handle
-      type="source"
-      position={Position.Right}
-      className="w-3 h-3 bg-white border-2 border-green-500"
-    />
-  </div>
-);
-
-const ConditionNode = ({ data, selected }: { data: any, selected: boolean }) => (
-  <div className={`relative px-6 py-4 bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-white rounded-xl shadow-lg border-2 transition-all duration-300 ${
-    selected ? 'border-yellow-400 shadow-2xl scale-105' : 'border-orange-300 hover:shadow-xl'
-  }`}>
-    <div className="flex items-center gap-3">
-      <div className="p-2 bg-white/20 rounded-lg">
-        <Settings className="h-5 w-5" />
-      </div>
-      <div>
-        <div className="font-bold text-sm uppercase tracking-wide">CONDITION</div>
-        <div className="text-xs mt-1 opacity-90 font-medium">{data.label}</div>
-      </div>
-    </div>
-    <Handle
-      type="target"
-      position={Position.Left}
-      className="w-3 h-3 bg-white border-2 border-orange-500"
-    />
-    <Handle
-      type="source"
-      position={Position.Right}
-      className="w-3 h-3 bg-white border-2 border-orange-500"
-    />
-  </div>
-);
-
-const DelayNode = ({ data, selected }: { data: any, selected: boolean }) => (
-  <div className={`relative px-6 py-4 bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 text-white rounded-xl shadow-lg border-2 transition-all duration-300 ${
-    selected ? 'border-yellow-400 shadow-2xl scale-105' : 'border-purple-300 hover:shadow-xl'
-  }`}>
-    <div className="flex items-center gap-3">
-      <div className="p-2 bg-white/20 rounded-lg">
-        <Clock className="h-5 w-5" />
-      </div>
-      <div>
-        <div className="font-bold text-sm uppercase tracking-wide">DELAY</div>
-        <div className="text-xs mt-1 opacity-90 font-medium">{data.label}</div>
-      </div>
-    </div>
-    <Handle
-      type="target"
-      position={Position.Left}
-      className="w-3 h-3 bg-white border-2 border-purple-500"
-    />
-    <Handle
-      type="source"
-      position={Position.Right}
-      className="w-3 h-3 bg-white border-2 border-purple-500"
-    />
-  </div>
-);
-
-const nodeTypes = {
-  trigger: TriggerNode,
-  action: ActionNode,
-  condition: ConditionNode,
-  delay: DelayNode,
-};
-
-
-
-// Workflow execution engine
-const executeWorkflow = async (nodes: Node[], edges: Edge[], leadData: any) => {
-  const executionLog: Array<{
-    nodeId: string;
-    type: string;
-    message: string;
-    timestamp: string;
-    success: boolean;
-    conditionResult?: boolean;
-    leadName?: string;  // Add this
-    leadId?: string; 
-  }> = [];
-  
-  
-  const findNextNodes = (currentNodeId: string) => {
-    return edges
-      .filter(edge => edge.source === currentNodeId)
-      .map(edge => nodes.find(node => node.id === edge.target))
-      .filter(node => node) as Node[];
-  };
-  
-  const executeNode = async (node: Node) => {
-    const timestamp = new Date().toLocaleTimeString();
-    
-    try {
-      switch (node.type) {
-        case 'trigger':
-          executionLog.push({
-            nodeId: node.id,
-            type: 'trigger',
-            message: `Workflow triggered: ${node.data.label} for lead ${leadData.name}`,
-            timestamp,
-            success: true
-          });
-          return { success: true, continueExecution: true };
-          
-        case 'action':
-          let result;
-          switch (node.data.actionType) {
-            case 'send-email':
-              result = await automationService.sendEmail(
-                leadData.id, 
-                node.data.emailTemplate || 'welcome',
-                node.data.emailSubject || 'Follow-up'
-              );
-              break;
-              
-            case 'update-status':
-              const newStatus = node.data.newStatus || 'contacted';
-              result = await automationService.updateLeadStatus(leadData.id, newStatus);
-              if (result.success) {
-                leadData.status = newStatus; // Update local leadData for subsequent nodes
-              }
-              break;
-              
-            default:
-              result = { success: true, message: 'Unknown action type' };
-          }
-          
-          executionLog.push({
-            nodeId: node.id,
-            type: 'action',
-            message: `${result.success ? 'Successfully executed' : 'Failed to execute'}: ${node.data.label} for ${leadData.name}`,
-            timestamp,
-            success: result.success
-          });
-          
-          return { success: result.success, continueExecution: result.success };
-          
-        case 'condition':
-          let conditionMet = false;
-          
-          switch (node.data.conditionType) {
-            case 'status-check':
-              const expectedStatus = node.data.expectedStatus || 'new';
-              conditionMet = leadData.status === expectedStatus;
-              break;
-              
-            case 'email-opened':
-              // For demo purposes, simulate email opened check
-              // In real implementation, this would check email_logs table
-              conditionMet = Math.random() > 0.5; // 50% chance
-              break;
-              
-            default:
-              conditionMet = true; // Default to true for unknown conditions
-          }
-          
-          executionLog.push({
-            nodeId: node.id,
-            type: 'condition',
-            message: `Condition "${node.data.label}": ${conditionMet ? 'Met' : 'Not met'} (Expected: ${node.data.expectedStatus || 'new'}, Actual: ${leadData.status})`,
-            timestamp,
-            success: true,
-            conditionResult: conditionMet
-          });
-          
-          // Return whether condition was met to control flow
-          return { success: true, continueExecution: conditionMet };
-          
-        case 'delay':
-          const delayTime = node.data.delayTime || 1000;
-          await new Promise(resolve => setTimeout(resolve, delayTime));
-          
-          executionLog.push({
-            nodeId: node.id,
-            type: 'delay',
-            message: `Delayed for ${delayTime/1000} seconds`,
-            timestamp,
-            success: true
-          });
-          
-          return { success: true, continueExecution: true };
-          
-        default:
-          executionLog.push({
-            nodeId: node.id,
-            type: 'unknown',
-            message: `Unknown node type: ${node.type}`,
-            timestamp,
-            success: false
-          });
-          return { success: false, continueExecution: false };
-      }
-      
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      executionLog.push({
-        nodeId: node.id,
-        type: node.type ?? 'unknown',
-        message: `Error executing ${node.data.label}: ${errorMessage}`,
-        timestamp,
-        success: false
-      });
-      return { success: false, continueExecution: false };
-    }
-  };
-  
-  // Find trigger node
-  const triggerNode = nodes.find(node => node.type === 'trigger');
-  if (!triggerNode) {
-    executionLog.push({
-      nodeId: 'system',
-      type: 'error',
-      message: 'No trigger node found in workflow',
-      timestamp: new Date().toLocaleTimeString(),
-      success: false
-    });
-    return executionLog;
-  }
-  
-  // Execute workflow with proper flow control
-  const executeSequentially = async (currentNodeId: string) => {
-    const nextNodes = findNextNodes(currentNodeId);
-    
-    for (const node of nextNodes) {
-      const result = await executeNode(node);
-      
-      // Only continue to next nodes if execution should continue
-      if (result.continueExecution) {
-        await executeSequentially(node.id);
-      } else {
-        // Log why execution stopped
-        executionLog.push({
-          nodeId: node.id,
-          type: 'flow-control',
-          message: `Execution stopped at ${node.data.label} - ${result.success ? 'condition not met' : 'execution failed'}`,
-          timestamp: new Date().toLocaleTimeString(),
-          success: result.success
-        });
-        break; // Stop processing further nodes in this branch
-      }
-    }
-  };
-  
-  // Start execution
-  const triggerResult = await executeNode(triggerNode);
-  if (triggerResult.continueExecution) {
-    await executeSequentially(triggerNode.id);
-  }
-  
-  return executionLog;
-};
 
 const WorkflowBuilder = () => {
-  type WorkflowNodeData = {
-    label: string;
-    description?: string;
-    actionType?: string;
-    conditionType?: string;
-    emailTemplate?: string;
-    emailSubject?: string;
-    smsMessage?: string;
-    newStatus?: string;
-    taskTitle?: string;
-    taskDescription?: string;
-    delayTime?: number;
-    expectedStatus?: string;
-  };
 
   const [nodes, setNodes, onNodesChange] = useNodesState([
     {
@@ -411,38 +107,6 @@ const WorkflowBuilder = () => {
   const [showWorkflowList, setShowWorkflowList] = useState(false);
   const [workflowDescription, setWorkflowDescription] = useState('');
 
-  
-  // Enhanced action types
-  const actionTypes: Record<string, {
-    label: string;
-    description: string;
-    icon: any;
-    color: string;
-  }> = {
-      
-     'send-email': { 
-      label: 'Send Email', 
-      description: 'Send personalized email to lead', 
-      icon: Mail, 
-      color: 'bg-blue-500' 
-    },
-    'update-status': { 
-      label: 'Update Status', 
-      description: 'Change lead status in CRM', 
-      icon: RefreshCw, 
-      color: 'bg-purple-500' 
-    },
-  };
-  
-  const conditionTypes: Record<string, { label: string; description: string }> = {
-  'status-check': { label: 'Check Lead Status', description: 'Check if lead has specific status' },
-  'email-opened': { label: 'Email Opened', description: 'Check if lead opened email' },
-};
-
-  const triggerTypes: Record<string, { label: string; description: string }> = {
-    'lead-created': { label: 'Lead Created', description: 'When a new lead is created' },
-    'form-submitted': { label: 'Form Submitted', description: 'When a form is submitted' },
-  };
   
   const onConnect = useCallback(
     (params: Edge | Connection) => {
@@ -708,9 +372,11 @@ setExecutionLog(allLogs);
 }, []);
 
 // Save workflows to localStorage whenever savedWorkflows changes
-useEffect(() => {
-  localStorage.setItem('savedWorkflows', JSON.stringify(savedWorkflows));
-}, [savedWorkflows]);
+   useEffect(() => {
+      if (savedWorkflows.length > 0) {
+      localStorage.setItem('savedWorkflows', JSON.stringify(savedWorkflows));
+    }
+  }, [savedWorkflows]);
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 p-6">

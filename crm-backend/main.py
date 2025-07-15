@@ -10,6 +10,10 @@ import logging
 import tempfile
 import os
 import time
+from PIL import Image
+import fitz  # PyMuPDF
+import numpy as np
+import io
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -127,7 +131,7 @@ async def handle_llm_query(request: QueryRequest):
 # OCR endpoint for image processing
 @app.post("/ocr")
 async def process_ocr(file: UploadFile = File(...)):
-    """Process uploaded image for OCR and lead extraction"""
+    """Process uploaded image or PDF for OCR and lead extraction"""
     start_time = time.time()
     
     try:
@@ -138,34 +142,46 @@ async def process_ocr(file: UploadFile = File(...)):
                 detail="OCR service is not available. Please check OPENROUTER_API_KEY configuration."
             )
         
-        # Validate file type
-        if not file.content_type.startswith('image/'):
-            raise HTTPException(
-                status_code=400,
-                detail="File must be an image (JPG, PNG, GIF, BMP)"
-            )
+        # Read file content
+        content = await file.read()
         
         # Validate file size (max 10MB)
-        content = await file.read()
         if len(content) > 10 * 1024 * 1024:  # 10MB limit
             raise HTTPException(
                 status_code=400,
                 detail="File size must be less than 10MB"
             )
         
-        # Create temporary file to save uploaded image
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
-            tmp_file.write(content)
-            tmp_file_path = tmp_file.name
+        # Check file type and handle accordingly
+        if file.content_type == 'application/pdf':
+            # Convert PDF to images
+            image_paths = await convert_pdf_to_images(content)
+        elif file.content_type.startswith('image/'):
+            # Handle regular image files
+            image_paths = await save_image_file(content)
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="File must be an image (JPG, PNG, GIF, BMP) or PDF"
+            )
+        
+        # Process all images for OCR
+        all_leads = []
+        optimized_image_paths = []
         
         try:
-            # Process the image using OCR
-            logger.info(f"Processing OCR for file: {file.filename}")
-            leads = ocr_processor.process_image(tmp_file_path)
+            for image_path in image_paths:
+                # Optimize image for better OCR results
+                optimized_path = optimize_image_for_ocr(image_path)
+                optimized_image_paths.append(optimized_path)
+                
+                logger.info(f"Processing OCR for optimized image: {optimized_path}")
+                leads = ocr_processor.process_image(optimized_path)
+                all_leads.extend(leads)
             
             # Process leads and add confidence scores
             leads_data = []
-            for lead in leads:
+            for lead in all_leads:
                 # Calculate confidence based on available fields
                 confidence = calculate_lead_confidence(lead)
                 
@@ -192,6 +208,8 @@ async def process_ocr(file: UploadFile = File(...)):
             return {
                 "success": True,
                 "filename": file.filename,
+                "file_type": "PDF" if file.content_type == 'application/pdf' else "Image",
+                "pages_processed": len(image_paths),
                 "leads_count": len(leads_data),
                 "leads": leads_data,
                 "processing_time": processing_time,
@@ -199,11 +217,14 @@ async def process_ocr(file: UploadFile = File(...)):
             }
             
         finally:
-            # Clean up temporary file
-            try:
-                os.unlink(tmp_file_path)
-            except Exception as e:
-                logger.warning(f"Failed to clean up temporary file: {e}")
+            # Clean up temporary files (both original and optimized)
+            all_paths_to_cleanup = image_paths + optimized_image_paths
+            for image_path in set(all_paths_to_cleanup):  # Use set to avoid duplicates
+                try:
+                    if os.path.exists(image_path):
+                        os.unlink(image_path)
+                except Exception as e:
+                    logger.warning(f"Failed to clean up temporary file {image_path}: {e}")
                 
     except HTTPException:
         raise
@@ -211,9 +232,85 @@ async def process_ocr(file: UploadFile = File(...)):
         logger.error(f"Error processing OCR: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Internal server error while processing image: {str(e)}"
+            detail=f"Internal server error while processing file: {str(e)}"
         )
 
+async def convert_pdf_to_images(pdf_content: bytes) -> list:
+    """Convert PDF content to image files using PyMuPDF (no external dependencies)"""
+    try:
+        # Open PDF from bytes
+        pdf_document = fitz.open(stream=pdf_content, filetype="pdf")
+        
+        image_paths = []
+        
+        # Process each page
+        for page_num in range(len(pdf_document)):
+            page = pdf_document[page_num]
+            
+            # Render page to image with high DPI for better OCR
+            mat = fitz.Matrix(3.0, 3.0)  # 3x zoom = ~300 DPI
+            pix = page.get_pixmap(matrix=mat)
+            
+            # Convert to PIL Image
+            img_data = pix.tobytes("png")
+            image = Image.open(io.BytesIO(img_data))
+            
+            # Save as temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f'_page_{page_num+1}.png') as tmp_file:
+                image.save(tmp_file, format='PNG')
+                image_paths.append(tmp_file.name)
+        
+        pdf_document.close()
+        logger.info(f"Successfully converted PDF to {len(image_paths)} image(s) using PyMuPDF")
+        return image_paths
+        
+    except Exception as e:
+        logger.error(f"Error converting PDF to images with PyMuPDF: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to convert PDF to images: {str(e)}"
+        )
+
+async def save_image_file(image_content: bytes) -> list:
+    """Save image content to temporary file and return list with single file path"""
+    try:
+        # Create temporary file to save uploaded image
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
+            tmp_file.write(image_content)
+            return [tmp_file.name]
+            
+    except Exception as e:
+        logger.error(f"Error saving image file: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save image file: {str(e)}"
+        )
+def optimize_image_for_ocr(image_path: str) -> str:
+    """Optimize image for better OCR results"""
+    try:
+        with Image.open(image_path) as img:
+            # Convert to RGB if necessary
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Enhance image quality for OCR
+            # You can add more image processing here like:
+            # - Increase contrast
+            # - Remove noise
+            # - Adjust brightness
+            # - Resize if too small
+            
+            # Save optimized image
+            optimized_path = image_path.replace('.png', '_optimized.png')
+            img.save(optimized_path, format='PNG', optimize=True)
+            
+            # Remove original and return optimized path
+            os.unlink(image_path)
+            return optimized_path
+            
+    except Exception as e:
+        logger.warning(f"Failed to optimize image {image_path}: {e}")
+        return image_path 
 def calculate_lead_confidence(lead):
     """Calculate confidence score based on available lead information"""
     score = 0

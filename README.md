@@ -13,6 +13,13 @@ A lightweight Customer Relationship Management system built with modern web tech
 - Extracts lead info like name and email using OCR (OpenRouter-powered)
 - Calculates a confidence score based on the completeness of extracted info
 
+**🏢 Company Intelligence**
+
+- Company Dashboard: Dedicated company overview with key metrics and insights
+- Business Analytics: Deep dive into company performance, revenue trends, and growth patterns
+- Competitive Analysis: Track market position and competitor insights
+- Financial Tracking: Revenue forecasting, deal value analysis, and ROI calculations
+
 **🧠 Agentic AI Integration (Simulated LLM)**
 - One-click "Chat" button opens a modal to interact with a mock LLM
 - Handles queries like:

@@ -11,6 +11,7 @@ import { useCRMStore } from '@/store/crmStore';
 import type { Lead } from '@/store/crmStore';
 import { useEffect, useState } from 'react';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogTitle, AlertDialogDescription } from '@/components/ui/alert-dialog';
+import { LineChart, Line, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 
 export default function AdvancedDashboard({ onLeadClick }: { onLeadClick: () => void }) {
   const {

@@ -142,6 +142,112 @@ export async function logEmailAttempt(leadId, to, subject, status, errorMessage 
   }
 }
 
+
+
+////////////////////////
+// 🔹 Meeting Management
+////////////////////////
+export async function getMeetings() {
+  const { data, error } = await supabase
+    .from("meetings")
+    .select(`
+      *,
+      leads:lead_id (
+        id,
+        name,
+        email,
+        company
+      )
+    `)
+    .order("scheduled_date", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+export async function createMeeting(meeting) {
+  const { data, error } = await supabase
+    .from("meetings")
+    .insert([{
+      ...meeting,
+      created_at: new Date().toISOString()
+    }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateMeeting(id, updates) {
+  const { data, error } = await supabase
+    .from("meetings")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteMeeting(id) {
+  const { error } = await supabase.from("meetings").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function getMeetingsForLead(leadId) {
+  const { data, error } = await supabase
+    .from("meetings")
+    .select("*")
+    .eq("lead_id", leadId)
+    .order("scheduled_date", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+
+
+
+
+// Company Management
+export async function getCompanies() {
+  const { data, error } = await supabase
+    .from("companies")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function createCompany(company) {
+  const { data, error } = await supabase
+    .from("companies")
+    .insert([company])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateCompany(id, updates) {
+  const { data, error } = await supabase
+    .from("companies")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteCompany(id) {
+  const { error } = await supabase.from("companies").delete().eq("id", id);
+  if (error) throw error;
+}
+
+
+
+
+
+
 ////////////////////////
 // 🔹 External API Calls (Python Backend)
 ////////////////////////
@@ -162,7 +268,7 @@ export async function extractLeadFromFile(file) {
   }
 
   // Validate file type
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/bmp'];
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/bmp', 'application/pdf'];
   if (!allowedTypes.includes(file.type)) {
     throw new Error(`Unsupported file type: ${file.type}. Supported types: ${allowedTypes.join(', ')}`);
   }

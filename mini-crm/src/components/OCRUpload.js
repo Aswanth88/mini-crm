@@ -45,60 +45,50 @@ export default function OCRUpload() {
   };
 
   const handleFileUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
     setIsProcessing(true);
     setResult(null);
     setError(null);
     clearLogs();
-    
-    if (showDebugLogs) {
-      addLog(`File selected: ${file.name}, type: ${file.type}, size: ${file.size} bytes`);
+
+    const allResults = [];
+    for (let file of files) {
+      try {
+        if (showDebugLogs) addLog(`Processing file: ${file.name}`);
+
+        const ocrResult = await extractLeadFromFile(file);
+
+        if (!ocrResult.success || !ocrResult.leads?.length) {
+          throw new Error(`No contacts found in "${file.name}"`);
+        }
+
+        allResults.push({
+          fileName: file.name,
+          ...ocrResult,
+        });
+
+        if (showDebugLogs) addLog(`OCR success for: ${file.name}`);
+
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        addLog(`Error with ${file.name}: ${message}`);
+        toast.error(`Failed to process ${file.name}: ${message}`);
+      }
     }
 
-    try {
-      // Step 1: Test API connection
-      if (showDebugLogs) addLog('Step 1: Testing API connection...');
-      const healthCheck = await fetch('http://localhost:8000/health');
-      if (showDebugLogs) addLog(`Health check status: ${healthCheck.status}`);
-      
-      if (!healthCheck.ok) {
-        throw new Error('OCR service is not available.');
-      }
-
-      // Step 2: Process OCR
-      if (showDebugLogs) {
-        addLog('Step 2: Processing OCR...');
-      }
-
-      const ocrResult = await extractLeadFromFile(file);
-      
-      if (showDebugLogs) {
-        addLog(`OCR result: ${JSON.stringify(ocrResult, null, 2)}`);
-      }
-
-      if (!ocrResult.success) {
-        throw new Error(ocrResult.message || 'OCR processing failed');
-      }
-
-      if (!ocrResult.leads || ocrResult.leads.length === 0) {
-        throw new Error('No contact information found in the document');
-      }
-
-      setResult(ocrResult);
+    if (allResults.length > 0) {
+      setResult(allResults[0]); // show the first result by default
       setSelectedLeadIndex(0);
-      toast.success('Document processed successfully!');
-      
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to process file';
-      setError(errorMessage);
-      if (showDebugLogs) addLog(`Error: ${errorMessage}`);
-      toast.error(errorMessage);
-    } finally {
-      setIsProcessing(false);
+      toast.success(`${allResults.length} file(s) processed successfully!`);
+    } else {
+      setError('No valid contacts found in uploaded files.');
     }
+
+    setIsProcessing(false);
   };
+
 
   const handleAcceptResult = async () => {
     if (!result || !result.leads[selectedLeadIndex]) return;
@@ -132,7 +122,7 @@ export default function OCRUpload() {
 
       // Create lead in database
       const createdLead = await createLead(leadData);
-      
+
       if (showDebugLogs) {
         addLog(`Lead created in database: ${JSON.stringify(createdLead)}`);
       }
@@ -140,17 +130,17 @@ export default function OCRUpload() {
       // Update local state - use the returned lead data from database
       addLead(createdLead);
       updateAnalytics();
-      
+
       // Optionally refresh leads from database to ensure consistency
       await fetchLeads();
-      
+
       toast.success(`Lead "${selectedLead.name}" has been added to CRM successfully!`);
-      
+
       // Reset form
       setResult(null);
       setSelectedLeadIndex(0);
       setError(null);
-      
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save lead';
       setError(errorMessage);
@@ -214,17 +204,17 @@ export default function OCRUpload() {
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
             <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
             <p className="text-lg font-medium mb-2">Upload Business Card or Document</p>
-            <p className="text-gray-600 mb-4">Supports: JPG, PNG, GIF, BMP (max 10MB)</p>
+            <p className="text-gray-600 mb-4">Supports: JPG, PNG, GIF, BMP, PDF (max 10MB)</p>
             <input
               type="file"
-              accept="image/jpeg,image/png,image/jpg,image/gif,image/bmp"
+              accept="image/jpeg,image/png,image/jpg,image/gif,image/bmp,application/pdf"
               onChange={handleFileUpload}
               className="hidden"
               id="file-upload"
               disabled={isProcessing}
             />
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               disabled={isProcessing}
               onClick={() => document.getElementById('file-upload').click()}
             >
@@ -304,7 +294,7 @@ export default function OCRUpload() {
                     <strong className="text-gray-700">Confidence:</strong>
                     <div className="flex items-center gap-2">
                       <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <div 
+                        <div
                           className="bg-green-600 h-2 rounded-full transition-all duration-300"
                           style={{ width: `${selectedLead.confidence * 100}%` }}
                         />
@@ -335,17 +325,17 @@ export default function OCRUpload() {
               )}
 
               <div className="flex gap-4">
-                <Button 
-                  onClick={handleAcceptResult} 
+                <Button
+                  onClick={handleAcceptResult}
                   className="flex-1"
                   disabled={isSaving}
                 >
                   <Check className="h-4 w-4 mr-2" />
                   {isSaving ? 'Saving...' : 'Accept & Add to CRM'}
                 </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={handleReject} 
+                <Button
+                  variant="outline"
+                  onClick={handleReject}
                   className="flex-1"
                   disabled={isSaving}
                 >

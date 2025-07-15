@@ -56,7 +56,6 @@ export default function AddLeadForm() {
           <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <Plus className="w-6 h-6 transition-transform duration-300 group-hover:rotate-90" />
           <span className="font-semibold text-lg">Add New Lead</span>
-          <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0" />
         </motion.button>
       </DialogTrigger>
       

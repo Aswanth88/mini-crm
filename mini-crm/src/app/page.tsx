@@ -4,18 +4,18 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import AddLeadForm from '@/components/AddLeadForm';
-import { 
-  BarChart, 
-  Workflow, 
-  FileText, 
-  MessageSquare, 
-  Sparkles, 
-  User, 
-  Bell, 
-  Settings, 
-  Search, 
-  ChevronDown, 
-  Zap, 
+import {
+  BarChart,
+  Workflow,
+  FileText,
+  MessageSquare,
+  Sparkles,
+  User,
+  Bell,
+  Settings,
+  Search,
+  ChevronDown,
+  Zap,
   Plus,
   Upload,
   TrendingUp,
@@ -26,13 +26,33 @@ import {
   ArrowRight,
   Clock,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  Building
 } from 'lucide-react';
 import AdvancedDashboard from '@/components/AdvancedDashboard';
 import WorkflowBuilder from '@/components/WorkflowBuilder';
 import OCRUpload from '@/components/OCRUpload';
 import AIChat from '@/components/AIChat';
 import { useCRMStore } from '@/store/crmStore';
+import { useMemo } from 'react';
+import {
+  LineChart,
+  Line,
+  BarChart as RechartsBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area
+} from 'recharts';
+import { Badge } from '@/components/ui/badge';
+import CompanyDashboard from '@/components/CompanyDashboard';
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -40,16 +60,20 @@ export default function Home() {
   const [showOCR, setShowOCR] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const {fetchLeads, leads, analytics } = useCRMStore();
+  const [dashboardType, setDashboardType] = useState('leads'); // 'leads' or 'company'
+
+  const { fetchLeads, leads, analytics, fetchMeetings, meetings } = useCRMStore();
 
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       await fetchLeads();
+      await fetchMeetings(); // <-- add this
       setIsLoading(false);
     };
     loadData();
-  }, [fetchLeads]);
+  }, [fetchLeads, fetchMeetings]);
+
 
   // Calculate real-time stats based on actual data
   const getChangePercentage = (current: number, previous: number) => {
@@ -59,40 +83,175 @@ export default function Home() {
   };
 
   const quickStats = [
-    { 
-      label: 'Total Leads', 
-      value: analytics.totalLeads.toString(), 
-      change: isLoading ? '...' : analytics.totalLeads > 0 ? `${analytics.totalLeads} leads` : 'No leads yet', 
-      icon: Users, 
-      color: 'from-blue-500 to-blue-600' 
+    {
+      label: 'Total Leads',
+      value: analytics.totalLeads.toString(),
+      change: isLoading ? '...' : analytics.totalLeads > 0 ? `${analytics.totalLeads} leads` : 'No leads yet',
+      icon: Users,
+      color: 'from-blue-500 to-blue-600'
     },
-    { 
-      label: 'Conversion Rate', 
-      value: `${analytics.conversionRate}%`, 
-      change: isLoading ? '...' : analytics.totalLeads > 0 ? 'Based on closed leads' : 'Add leads to track', 
-      icon: TrendingUp, 
-      color: 'from-green-500 to-green-600' 
+    {
+      label: 'Conversion Rate',
+      value: `${analytics.conversionRate}%`,
+      change: isLoading ? '...' : analytics.totalLeads > 0 ? 'Based on closed leads' : 'Add leads to track',
+      icon: TrendingUp,
+      color: 'from-green-500 to-green-600'
     },
-    { 
-      label: 'Active Chats', 
-      value: analytics.activeChats.toString(), 
-      change: isLoading ? '...' : analytics.activeChats > 0 ? 'Recent interactions' : 'No recent activity', 
-      icon: MessageSquare, 
-      color: 'from-purple-500 to-purple-600' 
+    {
+      label: 'Active Chats',
+      value: analytics.activeChats.toString(),
+      change: isLoading ? '...' : analytics.activeChats > 0 ? 'Recent interactions' : 'No recent activity',
+      icon: MessageSquare,
+      color: 'from-purple-500 to-purple-600'
     },
-    { 
-      label: 'AI Accuracy', 
-      value: `${analytics.aiAccuracy}%`, 
-      change: isLoading ? '...' : analytics.totalLeads > 0 ? 'Lead qualification rate' : 'No data available', 
-      icon: BarChart, 
-      color: 'from-orange-500 to-orange-600' 
+    {
+      label: 'Qualification Rate',
+      value: `${analytics.aiAccuracy}%`,
+      change: isLoading ? '...' : analytics.totalLeads > 0 ? 'Lead qualification rate' : 'No data available',
+      icon: BarChart,
+      color: 'from-orange-500 to-orange-600'
     },
   ];
+
+  // Chart data calculations
+  const pipelineData = useMemo(() => {
+    const statusCounts = leads.reduce((acc, lead) => {
+      acc[lead.status] = (acc[lead.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return [
+      { status: 'New', count: statusCounts.new || 0 },
+      { status: 'Contacted', count: statusCounts.contacted || 0 },
+      { status: 'Qualified', count: statusCounts.qualified || 0 },
+      { status: 'Converted', count: statusCounts.converted || 0 },
+      { status: 'Closed', count: statusCounts.closed || 0 },
+    ];
+  }, [leads]);
+
+  const conversionData = useMemo(() => {
+    const total = leads.length;
+    const contacted = leads.filter(l => ['contacted', 'qualified', 'converted'].includes(l.status)).length;
+    const qualified = leads.filter(l => ['qualified', 'converted'].includes(l.status)).length;
+    const converted = leads.filter(l => l.status === 'converted').length;
+
+    return [
+      { stage: 'Total', count: total },
+      { stage: 'Contacted', count: contacted },
+      { stage: 'Qualified', count: qualified },
+      { stage: 'Converted', count: converted },
+    ];
+  }, [leads]);
+
+  const sourceData = useMemo(() => {
+    const sources = leads.reduce((acc, lead) => {
+      acc[lead.source] = (acc[lead.source] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(sources).map(([name, value]) => ({ name, value }));
+  }, [leads]);
+
+  const performanceData = useMemo(() => {
+    // Generate last 6 months data
+    const months = [];
+    const now = new Date();
+
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+
+      // Calculate conversions for this month
+      const monthLeads = leads.filter(lead => {
+        const leadDate = new Date(lead.created_at || '');
+        return leadDate.getMonth() === date.getMonth() &&
+          leadDate.getFullYear() === date.getFullYear();
+      });
+
+      const conversions = monthLeads.filter(l => l.status === 'converted').length;
+
+      months.push({
+        month: monthName,
+        conversions,
+        leads: monthLeads.length
+      });
+    }
+
+    return months;
+  }, [leads]);
+
+  const recentActivity = useMemo(() => {
+    const activities = leads
+      .filter(lead => lead.last_contact)
+      .sort((a, b) => new Date(b.last_contact!).getTime() - new Date(a.last_contact!).getTime())
+      .slice(0, 5)
+      .map(lead => ({
+        action: `${lead.name} status updated to ${lead.status}`,
+        time: new Date(lead.last_contact!).toLocaleString(),
+        color: lead.status === 'converted' ? 'bg-green-500' :
+          lead.status === 'qualified' ? 'bg-blue-500' :
+            lead.status === 'contacted' ? 'bg-yellow-500' : 'bg-gray-500'
+      }));
+
+    return activities.length > 0 ? activities : [
+      { action: 'No recent activity', time: 'Add leads to see activity', color: 'bg-gray-300' }
+    ];
+  }, [leads]);
+
+  const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#6b7280'];
+  const upcomingMeetings = useMemo(() => {
+  // Do NOT call useCRMStore() here — already extracted at top
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  function formatMeetingTime(date: string, time: string): string {
+    const meetingDate = new Date(date);
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+
+    let dateStr = '';
+    if (meetingDate.toDateString() === today.toDateString()) {
+      dateStr = 'Today';
+    } else if (meetingDate.toDateString() === tomorrow.toDateString()) {
+      dateStr = 'Tomorrow';
+    } else {
+      dateStr = meetingDate.toLocaleDateString();
+    }
+
+    return `${dateStr} ${time}`;
+  }
+
+  const upcoming = meetings
+    .filter(meeting => {
+      const meetingDate = new Date(meeting.scheduled_date);
+      return meetingDate >= today && meeting.status !== 'cancelled';
+    })
+    .sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime())
+    .slice(0, 5)
+    .map(meeting => ({
+      id: meeting.id,
+      title: meeting.title,
+      time: formatMeetingTime(meeting.scheduled_date, meeting.scheduled_time),
+      attendees: meeting.attendees || 'No attendees specified',
+      status: meeting.status,
+      leadId: meeting.lead_id
+    }));
+
+  return upcoming.length > 0 ? upcoming : [
+    {
+      title: 'No upcoming meetings',
+      time: 'Schedule meetings via AI chat',
+      attendees: '',
+      status: 'none'
+    }
+  ];
+}, [meetings]);
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Enhanced Professional Header */}
-      <motion.header 
+      <motion.header
         className="relative bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 text-white shadow-2xl overflow-hidden"
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
@@ -108,7 +267,7 @@ export default function Home() {
         {/* Navigation Bar */}
         <nav className="relative z-10 px-6 py-4 flex items-center justify-between border-b border-white/10">
           <div className="flex items-center space-x-6">
-            <motion.div 
+            <motion.div
               className="flex items-center space-x-3"
               whileHover={{ scale: 1.05 }}
               transition={{ type: "spring", stiffness: 400, damping: 10 }}
@@ -142,16 +301,16 @@ export default function Home() {
                 <Zap className="w-4 h-4 text-yellow-300" />
                 <span className="text-sm font-medium text-blue-200">AI-Powered CRM Platform</span>
               </div>
-              
+
               <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-transparent leading-tight">
                 Advanced Mini-CRM
               </h1>
-              
+
               <p className="text-lg md:text-xl text-blue-100 mb-8 max-w-2xl mx-auto leading-relaxed">
                 Professional CRM with AI-powered automation and intelligent insights
               </p>
             </motion.div>
-            <motion.div 
+            <motion.div
               className="flex flex-wrap justify-center gap-4 mb-4"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -203,7 +362,7 @@ export default function Home() {
       <main className="px-6 py-8">
         <div className="max-w-7xl mx-auto">
           {/* Quick Stats */}
-          <motion.div 
+          <motion.div
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -212,8 +371,8 @@ export default function Home() {
             {quickStats.map((stat, index) => (
               <motion.div
                 key={stat.label}
-                className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-all duration-300"
-                whileHover={{ scale: 1.02, translateY: -2 }}
+                className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-lg transition-all duration-300 group"
+                whileHover={{ scale: 1.02, translateY: -4 }}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.7 + index * 0.1 }}
@@ -221,17 +380,27 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600 mb-1">{stat.label}</p>
-                    <div className="text-2xl font-bold text-gray-900 mb-1">
+                    <div className="text-3xl font-bold text-gray-900 mb-2">
                       {isLoading ? (
-                        <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-9 w-20 bg-gray-200 rounded animate-pulse"></div>
                       ) : (
-                        stat.value
+                        <span className="bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                          {stat.value}
+                        </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 font-medium">{stat.change}</p>
+                    <div className="flex items-center space-x-2">
+                      <div className="h-1 w-16 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full bg-gradient-to-r ${stat.color} transition-all duration-1000`}
+                          style={{ width: `${Math.min(100, parseInt(stat.value) / 10 * 100)}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-500 font-medium">{stat.change}</p>
+                    </div>
                   </div>
-                  <div className={`bg-gradient-to-r ${stat.color} p-3 rounded-lg shadow-sm`}>
-                    <stat.icon className="w-5 h-5 text-white" />
+                  <div className={`bg-gradient-to-r ${stat.color} p-4 rounded-xl shadow-lg group-hover:shadow-xl transition-all duration-300`}>
+                    <stat.icon className="w-6 h-6 text-white" />
                   </div>
                 </div>
               </motion.div>
@@ -240,7 +409,7 @@ export default function Home() {
 
           {/* No Data State */}
           {!isLoading && leads.length === 0 && (
-            <motion.div 
+            <motion.div
               className="bg-white rounded-xl p-8 shadow-sm border border-gray-200 text-center mb-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -256,7 +425,7 @@ export default function Home() {
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
                   <AddLeadForm />
-                  <Button 
+                  <Button
                     onClick={() => setShowOCR(true)}
                     variant="outline"
                     className="flex items-center gap-2"
@@ -270,39 +439,232 @@ export default function Home() {
           )}
 
           {/* Dashboard Section */}
-          <motion.div 
+          {/* Dashboard Section */}
+          <motion.div
             className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8 }}
           >
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+            <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                    <BarChart className="w-5 h-5 text-blue-600" />
-                    Dashboard Overview
-                  </h2>
+                  <CardTitle className="flex items-center space-x-2">
+                    <BarChart className="h-5 w-5" />
+                    <span>{dashboardType === 'leads' ? 'Leads' : 'Company'} Dashboard</span>
+                  </CardTitle>
                   <p className="text-sm text-gray-600 mt-1">
-                    {isLoading ? 'Loading data...' : `${analytics.totalLeads} leads in your pipeline`}
+                    {isLoading ? 'Loading data...' : 
+                     dashboardType === 'leads' ? `${analytics.totalLeads} leads in your pipeline` : 
+                     'Company overview and metrics'}
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full animate-pulse ${isLoading ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
-                  <span className="text-sm text-gray-600">
+                  <Button
+                    onClick={() => setDashboardType(dashboardType === 'leads' ? 'company' : 'leads')}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    {dashboardType === 'leads' ? <Building className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                    Switch to {dashboardType === 'leads' ? 'Company' : 'Leads'}
+                  </Button>
+                  <Badge variant="secondary" className="bg-green-100 text-green-800">
                     {isLoading ? 'Loading...' : 'Live Data'}
-                  </span>
+                  </Badge>
                 </div>
               </div>
-            </div>
-            
+            </CardHeader>
+
             <div className="p-6">
-              <AdvancedDashboard onLeadClick={() => setShowChat(true)} />
+              {dashboardType === 'leads' ? (
+                <AdvancedDashboard onLeadClick={() => setShowChat(true)} />
+              ) : (
+                
+  <CompanyDashboard />
+              )}
+            </div>
+          </motion.div>
+
+          {/* Advanced Analytics Section */}
+          <motion.div
+            className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 1.2 }}
+          >
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                Advanced Analytics
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">Insights and Visualizations</p>
+            </div>
+
+            <div className="p-6">
+              {/* Charts Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Lead Pipeline Chart */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <BarChart className="w-4 h-4 text-blue-600" />
+                    Lead Pipeline
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsBarChart data={pipelineData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="status" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: '8px',
+                            border: 'none',
+                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                        <Bar dataKey="count" fill="url(#blueGradient)" radius={[4, 4, 0, 0]} />
+                        <defs>
+                          <linearGradient id="blueGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#3b82f6" />
+                            <stop offset="100%" stopColor="#1e40af" />
+                          </linearGradient>
+                        </defs>
+                      </RechartsBarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Conversion Funnel */}
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-purple-600" />
+                    Conversion Funnel
+                  </h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={conversionData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: '8px',
+                            border: 'none',
+                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="count"
+                          stroke="#8b5cf6"
+                          fill="url(#purpleGradient)"
+                        />
+                        <defs>
+                          <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.8} />
+                            <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.2} />
+                          </linearGradient>
+                        </defs>
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Second Row of Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Lead Sources Distribution */}
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-green-600" />
+                    Lead Sources
+                  </h3>
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={sourceData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {sourceData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Performance Metrics */}
+                <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-6 border border-orange-100">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-orange-600" />
+                    Performance Trends
+                  </h3>
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={performanceData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: '8px',
+                            border: 'none',
+                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="conversions"
+                          stroke="#f59e0b"
+                          strokeWidth={3}
+                          dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Meetings Section */}
+                <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl p-6 border border-cyan-100">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-cyan-600" />
+                    Upcoming Meetings
+                  </h3>
+                  <div className="space-y-3">
+                    {upcomingMeetings.map((meeting, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100 hover:shadow-md transition-all duration-200">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{meeting.title}</p>
+                            <p className="text-xs text-gray-500">{meeting.time} • {meeting.attendees}</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {meeting.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </motion.div>
 
           {/* AI Features Section */}
-          <motion.div 
+          <motion.div
             className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -315,7 +677,7 @@ export default function Home() {
               </h2>
               <p className="text-sm text-gray-600 mt-1">Intelligent automation at your fingertips</p>
             </div>
-            
+
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-4">
@@ -336,7 +698,7 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -355,7 +717,7 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -378,23 +740,23 @@ export default function Home() {
             </div>
           </motion.div>
         </div>
+
       </main>
-      
+
       {/* Modal Overlays */}
       {showWorkflows && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div 
+          <motion.div
             className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <h2 className="text-xl font-bold">Workflow Builder</h2>
-              <button 
+              <button
                 onClick={() => setShowWorkflows(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
-                ×
               </button>
             </div>
             <div className="p-6">
@@ -406,14 +768,14 @@ export default function Home() {
 
       {showOCR && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div 
+          <motion.div
             className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-auto"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <h2 className="text-xl font-bold">Document Upload & OCR</h2>
-              <button 
+              <button
                 onClick={() => setShowOCR(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
@@ -429,14 +791,14 @@ export default function Home() {
 
       {showChat && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div 
+          <motion.div
             className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-auto"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <h2 className="text-xl font-bold">AI Assistant</h2>
-              <button 
+              <button
                 onClick={() => setShowChat(false)}
                 className="text-gray-500 hover:text-gray-700"
               >

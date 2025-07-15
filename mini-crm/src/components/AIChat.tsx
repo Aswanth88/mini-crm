@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Bot, User, Send, Loader2, Sparkles, MessageSquare, Brain, Zap, TrendingUp, Target, Clock, Star, BarChart3, Calendar, FileText, Search, AlertCircle } from 'lucide-react';
 import { useAI } from '@/providers/AIProvider';
 import { useCRMStore } from '@/store/crmStore';
+import InlineCalendar from '@/components/Calendar';
+import { toast } from 'sonner';
 
 interface Message {
   id: string;
@@ -26,7 +28,8 @@ export default function AIChat() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { processQuery } = useAI();
-  const { selectedLead } = useCRMStore();
+  const { selectedLead,addMeeting  } = useCRMStore();
+  const [showCalendar, setShowCalendar] = useState<string | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -50,55 +53,55 @@ export default function AIChat() {
   // Intent styling configuration
   const getIntentStyle = (intent: string) => {
     const intentStyles = {
-      'lead_details': { 
-        color: 'bg-gradient-to-r from-emerald-500 to-teal-600', 
-        icon: TrendingUp 
+      'lead_details': {
+        color: 'bg-gradient-to-r from-emerald-500 to-teal-600',
+        icon: TrendingUp
       },
 
-      'lead_details_request': { 
-        color: 'bg-gradient-to-r from-emerald-500 to-teal-600', 
-        icon: TrendingUp 
+      'lead_details_request': {
+        color: 'bg-gradient-to-r from-emerald-500 to-teal-600',
+        icon: TrendingUp
       },
 
-      'follow_up': { 
-        color: 'bg-gradient-to-r from-blue-500 to-cyan-600', 
-        icon: Target 
+      'follow_up': {
+        color: 'bg-gradient-to-r from-blue-500 to-cyan-600',
+        icon: Target
       },
 
-      'follow_up_request': { 
-        color: 'bg-gradient-to-r from-blue-500 to-cyan-600', 
-        icon: Target 
+      'follow_up_request': {
+        color: 'bg-gradient-to-r from-blue-500 to-cyan-600',
+        icon: Target
       },
 
-      'analytics': { 
-        color: 'bg-gradient-to-r from-purple-500 to-pink-600', 
-        icon: BarChart3 
+      'analytics': {
+        color: 'bg-gradient-to-r from-purple-500 to-pink-600',
+        icon: BarChart3
       },
 
-      'analytics_request': { 
-        color: 'bg-gradient-to-r from-purple-500 to-pink-600', 
-        icon: BarChart3 
+      'analytics_request': {
+        color: 'bg-gradient-to-r from-purple-500 to-pink-600',
+        icon: BarChart3
       },
-      
-      'schedule_meeting': { 
-        color: 'bg-gradient-to-r from-orange-500 to-red-600', 
-        icon: Calendar 
+
+      'schedule_meeting': {
+        color: 'bg-gradient-to-r from-orange-500 to-red-600',
+        icon: Calendar
       },
-      'status_update': { 
-        color: 'bg-gradient-to-r from-indigo-500 to-violet-600', 
-        icon: FileText 
+      'status_update': {
+        color: 'bg-gradient-to-r from-indigo-500 to-violet-600',
+        icon: FileText
       },
-      'search': { 
-        color: 'bg-gradient-to-r from-rose-500 to-pink-600', 
-        icon: Search 
+      'search': {
+        color: 'bg-gradient-to-r from-rose-500 to-pink-600',
+        icon: Search
       },
-      'general': { 
-        color: 'bg-gradient-to-r from-slate-500 to-gray-600', 
-        icon: Brain 
+      'general': {
+        color: 'bg-gradient-to-r from-slate-500 to-gray-600',
+        icon: Brain
       },
-      'error': { 
-        color: 'bg-gradient-to-r from-red-500 to-rose-600', 
-        icon: AlertCircle 
+      'error': {
+        color: 'bg-gradient-to-r from-red-500 to-rose-600',
+        icon: AlertCircle
       }
     };
 
@@ -108,9 +111,9 @@ export default function AIChat() {
 
   const handleQuickAction = async (action: string) => {
     if (isLoading) return;
-    
+
     setInputValue(action);
-    
+
     // Auto-send the message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -124,21 +127,21 @@ export default function AIChat() {
     setIsTyping(true);
 
     try {
-      const leadData = selectedLead 
+      const leadData = selectedLead
         ? {
-            id: selectedLead.id,
-            name: selectedLead.name,
-            email: selectedLead.email,
-            phone: selectedLead.phone || null,
-            source: selectedLead.source,
-            status: selectedLead.status, 
-            company: selectedLead.company || null,
-            title: selectedLead.title || null,
-            address: selectedLead.address || null,
-            industry: selectedLead.industry || null,
-            website: selectedLead.website || null,
+          id: selectedLead.id,
+          name: selectedLead.name,
+          email: selectedLead.email,
+          phone: selectedLead.phone || null,
+          source: selectedLead.source,
+          status: selectedLead.status,
+          company: selectedLead.company || null,
+          title: selectedLead.title || null,
+          address: selectedLead.address || null,
+          industry: selectedLead.industry || null,
+          website: selectedLead.website || null,
 
-          }
+        }
         : null;
 
 
@@ -152,9 +155,9 @@ export default function AIChat() {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       const aiResponse = await processQuery(action, leadData, conversationHistory);
-      
+
       setIsTyping(false);
-      
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'ai',
@@ -169,7 +172,7 @@ export default function AIChat() {
     } catch (error) {
       console.error('AI processing failed:', error);
       setIsTyping(false);
-      
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'ai',
@@ -199,20 +202,20 @@ export default function AIChat() {
     setIsTyping(true);
 
     try {
-      const leadData = selectedLead 
+      const leadData = selectedLead
         ? {
-            id: selectedLead.id,
-            name: selectedLead.name,
-            email: selectedLead.email,
-            phone: selectedLead.phone|| null,
-            source: selectedLead.source,
-            status: selectedLead.status||null, 
-            company: selectedLead.company || null,
-            title: selectedLead.title || null,
-            address: selectedLead.address || null,
-            industry: selectedLead.industry || null,
-            website: selectedLead.website || null,
-          }
+          id: selectedLead.id,
+          name: selectedLead.name,
+          email: selectedLead.email,
+          phone: selectedLead.phone || null,
+          source: selectedLead.source,
+          status: selectedLead.status || null,
+          company: selectedLead.company || null,
+          title: selectedLead.title || null,
+          address: selectedLead.address || null,
+          industry: selectedLead.industry || null,
+          website: selectedLead.website || null,
+        }
         : null;
 
       const conversationHistory = messages.map(msg => ({
@@ -224,9 +227,9 @@ export default function AIChat() {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       const aiResponse = await processQuery(inputValue, leadData, conversationHistory);
-      
+
       setIsTyping(false);
-      
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'ai',
@@ -241,7 +244,7 @@ export default function AIChat() {
     } catch (error) {
       console.error('AI processing failed:', error);
       setIsTyping(false);
-      
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'ai',
@@ -334,10 +337,10 @@ export default function AIChat() {
             </div>
             <h3 className="text-2xl font-bold text-slate-800 mb-2">Welcome to AI Sales Assistant</h3>
             <p className="text-slate-600 mb-6 max-w-md mx-auto">
-              Your intelligent companion for lead management, sales insights, and automated follow-ups. 
+              Your intelligent companion for lead management, sales insights, and automated follow-ups.
               Start by asking a question or selecting a quick action below.
             </p>
-            
+
             {/* Quick Actions */}
             <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
               {quickActions.map((action, index) => (
@@ -369,43 +372,39 @@ export default function AIChat() {
             >
               <div className={`max-w-[85%] group ${message.role === 'user' ? 'ml-12' : 'mr-12'}`}>
                 <div
-                  className={`relative p-4 rounded-2xl shadow-lg ${
-                    message.role === 'user'
-                      ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white'
-                      : 'bg-white border border-slate-200 text-slate-800'
-                  }`}
+                  className={`relative p-4 rounded-2xl shadow-lg ${message.role === 'user'
+                    ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white'
+                    : 'bg-white border border-slate-200 text-slate-800'
+                    }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.role === 'user' 
-                        ? 'bg-white/20' 
-                        : 'bg-gradient-to-br from-emerald-500 to-teal-600'
-                    }`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${message.role === 'user'
+                      ? 'bg-white/20'
+                      : 'bg-gradient-to-br from-emerald-500 to-teal-600'
+                      }`}>
                       {message.role === 'user' ? (
                         <User className="h-4 w-4 text-white" />
                       ) : (
                         <Bot className="h-4 w-4 text-white" />
                       )}
                     </div>
-                    
+
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs font-medium ${
-                          message.role === 'user' ? 'text-white/80' : 'text-slate-500'
-                        }`}>
+                        <span className={`text-xs font-medium ${message.role === 'user' ? 'text-white/80' : 'text-slate-500'
+                          }`}>
                           {message.role === 'user' ? 'You' : 'AI Assistant'}
                         </span>
-                        <span className={`text-xs ${
-                          message.role === 'user' ? 'text-white/60' : 'text-slate-400'
-                        }`}>
+                        <span className={`text-xs ${message.role === 'user' ? 'text-white/60' : 'text-slate-400'
+                          }`}>
                           {formatTime(message.timestamp)}
                         </span>
                       </div>
-                      
+
                       <p className="text-sm leading-relaxed whitespace-pre-line">
                         {message.content}
                       </p>
-                      
+
                       {message.intent && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.8 }}
@@ -432,27 +431,83 @@ export default function AIChat() {
                           )}
                         </motion.div>
                       )}
-                      
+
                       {message.actions && message.actions.length > 0 && (
                         <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="mt-3 flex flex-wrap gap-2"
+                          className="mt-3 space-y-2"
                         >
                           {message.actions.map((action, index) => (
-                            <Button
-                              key={index}
-                              variant="outline"
-                              size="sm"
-                              className="text-xs bg-gradient-to-r from-slate-50 to-white border-slate-200 hover:from-blue-50 hover:to-indigo-50 hover:border-blue-200 transition-all duration-200"
-                              onClick={() => console.log('Action:', action)}
-                            >
-                              <Zap className="h-3 w-3 mr-1" />
-                              {action.type.replace('_', ' ')}
-                            </Button>
+                            <div key={index}>
+                              {action.type === 'schedule_meeting' ? (
+                                <div className="space-y-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs bg-gradient-to-r from-slate-50 to-white border-slate-200 hover:from-blue-50 hover:to-indigo-50 hover:border-blue-200 transition-all duration-200"
+                                    onClick={() => setShowCalendar(showCalendar === message.id ? null : message.id)}
+                                  >
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    {showCalendar === message.id ? 'Cancel' : 'Schedule Meeting'}
+                                  </Button>
+
+                                  {showCalendar === message.id && (
+                                    <motion.div
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: 'auto' }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                    >
+                                      <InlineCalendar
+                                        onSchedule={async (date, time) => {
+                                          if (!selectedLead) {
+                                            toast.error('No lead selected for meeting');
+                                            setShowCalendar(null);
+                                            return;
+                                          }
+
+                                          try {
+                                            await addMeeting({
+                                              lead_id: selectedLead.id,
+                                              title: `Meeting with ${selectedLead.name}`,
+                                              scheduled_date: date,
+                                              scheduled_time: time,
+                                              status: 'scheduled',
+                                              attendees: selectedLead.email,
+                                              notes: 'Meeting scheduled via AI Assistant'
+                                            });
+
+                                            toast.success(`Meeting scheduled with ${selectedLead.name} for ${new Date(date).toLocaleDateString()} at ${time}`);
+                                            setShowCalendar(null);
+
+                                            // Optionally refresh meetings list
+                                            // await fetchMeetings();
+                                          } catch (error) {
+                                            console.error('Failed to schedule meeting:', error);
+                                            toast.error('Failed to schedule meeting');
+                                          }
+                                        }}
+                                        onCancel={() => setShowCalendar(null)}
+                                      />
+                                    </motion.div>
+                                  )}
+                                </div>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs bg-gradient-to-r from-slate-50 to-white border-slate-200 hover:from-blue-50 hover:to-indigo-50 hover:border-blue-200 transition-all duration-200"
+                                  onClick={() => console.log('Action:', action)}
+                                >
+                                  <Zap className="h-3 w-3 mr-1" />
+                                  {action.type.replace('_', ' ')}
+                                </Button>
+                              )}
+                            </div>
                           ))}
                         </motion.div>
                       )}
+
                     </div>
                   </div>
                 </div>
